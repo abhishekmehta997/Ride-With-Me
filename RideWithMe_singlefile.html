@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RideWithMe - Single File App</title>
+  <style>
+    :root{--accent:#0b74de;--muted:#666}
+    *{box-sizing:border-box;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', 'Helvetica Neue', Arial}
+    body{margin:0;background:#f6f8fb;color:#111}
+    .wrap{max-width:1000px;margin:18px auto;padding:18px}
+    header{display:flex;align-items:center;justify-content:space-between}
+    h1{margin:0;font-size:20px}
+    .card{background:#fff;border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(12,20,40,0.06);margin-top:12px}
+    label{display:block;font-size:13px;margin:8px 0 6px}
+    input[type=text], input[type=number], input[type=tel], textarea, select{width:100%;padding:10px;border-radius:8px;border:1px solid #e3e6ee;font-size:14px}
+    .row{display:flex;gap:12px}
+    .col{flex:1}
+    button{background:var(--accent);color:#fff;padding:10px 12px;border-radius:10px;border:0;font-weight:600;cursor:pointer}
+    .muted{color:var(--muted);font-size:13px}
+    nav{display:flex;gap:8px;margin-top:12px}
+    nav button{background:#fff;border:1px solid #e9eef7;color:#111;padding:8px 10px}
+    .requests-list{margin-top:12px}
+    .req{border:1px solid #eef3fb;padding:12px;border-radius:10px;margin-bottom:10px}
+    .tag{display:inline-block;padding:6px 8px;border-radius:8px;font-weight:600}
+    .status-pending{background:#fff6e6;color:#b36b00}
+    .status-accepted{background:#e6fff1;color:#057a3b}
+    .status-declined{background:#fff0f2;color:#a12b42}
+    .small{font-size:13px}
+    .flex{display:flex;align-items:center;gap:8px}
+    .right{margin-left:auto}
+    .controls button{background:#fff;border:1px solid #e3e6ee;padding:8px;border-radius:8px}
+    .badge{font-size:12px;padding:6px 8px;border-radius:999px;background:#eef5ff;color:#0b4ea1}
+    footer{margin-top:18px;text-align:center;color:#888;font-size:13px}
+    /* responsive */
+    @media(max-width:640px){.row{flex-direction:column}}
+    .notice{background:#fff9e6;border-left:4px solid #f2c94c;padding:10px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>RideWithMe — लोकल राइड Provider</h1>
+      <div>
+        <span class="muted">Owner: <span id="ownerDisplay">---</span></span>
+      </div>
+    </header>
+
+    <nav>
+      <button id="viewCustomer">ग्राहक (Customer)</button>
+      <button id="viewOwner">Owner/Admin</button>
+      <button id="viewSettings">सेटिंग्स</button>
+    </nav>
+
+    <!-- CUSTOMER VIEW -->
+    <section id="customerView" class="card">
+      <h2>Ride Request भेजें</h2>
+      <div class="row">
+        <div class="col">
+          <label>नाम</label>
+          <input id="custName" type="text" placeholder="आपका नाम" />
+        </div>
+        <div class="col">
+          <label>मोबाइल नंबर</label>
+          <input id="custPhone" type="tel" placeholder="10 digit मोबाइल" />
+        </div>
+      </div>
+      <label>Pickup Point (text)</label>
+      <input id="pickup" type="text" placeholder="Pickup location" />
+      <label>Drop Point (text)</label>
+      <input id="drop" type="text" placeholder="Drop location" />
+      <div class="row">
+        <div class="col">
+          <label>Estimated Km</label>
+          <input id="kms" type="number" min="0" step="0.1" placeholder="उदा. 12" />
+        </div>
+        <div class="col">
+          <label>Rate per km (Auto)</label>
+          <input id="ratePerKmDisplay" type="text" disabled />
+        </div>
+      </div>
+      <label>Calculated Fare</label>
+      <input id="fareDisplay" type="text" disabled />
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button id="requestRideBtn">Request Ride</button>
+        <button id="callOwnerBtn" class="controls">Call Owner</button>
+        <button id="waOwnerBtn" class="controls">WhatsApp Owner</button>
+      </div>
+      <div style="margin-top:12px" class="notice">
+        <div class="small">Note: ग्राहक "Estimated Km" खुद लिख सकते हैं; Owner इसे बाद में एडिट कर सकता है।</div>
+      </div>
+    </section>
+
+    <!-- OWNER VIEW -->
+    <section id="ownerView" class="card" style="display:none">
+      <h2>Owner/Admin Panel</h2>
+      <div class="row">
+        <div class="col">
+          <label>Login Passcode</label>
+          <input id="ownerPass" type="password" placeholder="Enter passcode" />
+        </div>
+        <div style="width:150px;display:flex;align-items:flex-end">
+          <button id="ownerLoginBtn">Login</button>
+        </div>
+      </div>
+      <div id="ownerPanel" style="display:none;margin-top:12px">
+        <div class="flex">
+          <div class="muted">Requests</div>
+          <div class="right"><span class="badge" id="pendingCount">0 Pending</span></div>
+        </div>
+        <div class="requests-list" id="requestsList"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section id="settingsView" class="card" style="display:none">
+      <h2>Settings / सेटिंग्स</h2>
+      <label>Owner Phone Number</label>
+      <input id="ownerPhone" type="tel" placeholder="Owner phone (eg. 911234567890) with country code optional" />
+      <label>Rate per km (₹)</label>
+      <input id="ratePerKm" type="number" min="0" step="0.5" />
+      <label>Owner Passcode (4 digit)</label>
+      <input id="ownerPasscodeSet" type="password" placeholder="Default 1234" />
+      <div style="margin-top:10px">
+        <button id="saveSettings">Save Settings</button>
+      </div>
+      <div style="margin-top:12px" class="muted small">Settings localStorage में सेव होंगी—ब्राउज़र क्लियर करने पर मिट सकती हैं।</div>
+    </section>
+
+    <footer class="muted">Single-file web app — Acode में पेस्ट कर सीधे खोलें।</footer>
+  </div>
+
+<script>
+// Simple single-file app using localStorage
+const LS_KEY = 'ridewithme_requests_v1'
+const LS_SETTINGS = 'ridewithme_settings_v1'
+
+// Default settings
+let settings = {
+  ownerPhone: '',
+  ratePerKm: 9,
+  ownerPasscode: '1234',
+  ownerName: 'Owner'
+}
+
+function loadSettings(){
+  const s = localStorage.getItem(LS_SETTINGS)
+  if(s) Object.assign(settings, JSON.parse(s))
+  document.getElementById('ratePerKm').value = settings.ratePerKm
+  document.getElementById('ownerPhone').value = settings.ownerPhone
+  document.getElementById('ownerPasscodeSet').value = settings.ownerPasscode
+  document.getElementById('ratePerKmDisplay').value = '₹ ' + settings.ratePerKm + ' / km'
+  document.getElementById('ownerDisplay').innerText = settings.ownerName + ' (' + (settings.ownerPhone || 'no phone') + ')'
+}
+
+function saveSettings(){
+  settings.ownerPhone = document.getElementById('ownerPhone').value.trim()
+  const r = parseFloat(document.getElementById('ratePerKm').value)
+  if(!isNaN(r) && r >= 0) settings.ratePerKm = r
+  const pass = document.getElementById('ownerPasscodeSet').value.trim()
+  if(pass) settings.ownerPasscode = pass
+  localStorage.setItem(LS_SETTINGS, JSON.stringify(settings))
+  loadSettings()
+  alert('Settings saved')
+}
+
+function getRequests(){
+  return JSON.parse(localStorage.getItem(LS_KEY) || '[]')
+}
+function saveRequests(arr){
+  localStorage.setItem(LS_KEY, JSON.stringify(arr))
+}
+
+function formatCurrency(x){
+  return '₹' + Number(x).toFixed(2)
+}
+
+function calculateFare(km){
+  return Number(km || 0) * Number(settings.ratePerKm || 0)
+}
+
+// CUSTOMER actions
+const kmsInput = document.getElementById('kms')
+const fareDisplay = document.getElementById('fareDisplay')
+const rateDisplay = document.getElementById('ratePerKmDisplay')
+
+kmsInput.addEventListener('input', ()=>{
+  const km = parseFloat(kmsInput.value || 0)
+  fareDisplay.value = formatCurrency(calculateFare(km))
+})
+
+document.getElementById('requestRideBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('custName').value.trim()
+  const phone = document.getElementById('custPhone').value.trim()
+  const pickup = document.getElementById('pickup').value.trim()
+  const drop = document.getElementById('drop').value.trim()
+  const kms = parseFloat(document.getElementById('kms').value || 0)
+  if(!name || !phone || !pickup || !drop){alert('कृपया नाम, मोबाइल, pickup और drop भरें');return}
+  const requests = getRequests()
+  const id = 'r' + Date.now()
+  const fare = calculateFare(kms)
+  const req = {id,name,phone,pickup,drop,kms:Number(kms),fare,status:'Pending',created:Date.now()}
+  requests.unshift(req)
+  saveRequests(requests)
+  alert('Request sent — Owner को notification मिलेगा')
+  renderRequestsList() // live update
+})
+
+// Contact owner from customer view
+function normalizePhoneForWhatsApp(p){
+  // Remove spaces, + and leading zeros commonly
+  let x = p.replace(/[^0-9]/g,'')
+  if(x.length===10) x = '91' + x
+  return x
+}
+
+document.getElementById('callOwnerBtn').addEventListener('click', ()=>{
+  const ph = settings.ownerPhone
+  if(!ph){alert('Owner phone सेट नहीं है — Settings में जाएं');return}
+  window.location.href = 'tel:' + ph
+})
+
+document.getElementById('waOwnerBtn').addEventListener('click', ()=>{
+  const ph = settings.ownerPhone
+  if(!ph){alert('Owner phone सेट नहीं है — Settings में जाएं');return}
+  const clean = normalizePhoneForWhatsApp(ph)
+  const text = encodeURIComponent('Hello, मुझे ride चाहिए।')
+  window.open('https://wa.me/' + clean + '?text=' + text, '_blank')
+})
+
+// OWNER actions
+let ownerLoggedIn = false
+document.getElementById('ownerLoginBtn').addEventListener('click', ()=>{
+  const pass = document.getElementById('ownerPass').value
+  if(pass === settings.ownerPasscode){ ownerLoggedIn = true; document.getElementById('ownerPanel').style.display='block'; alert('Owner logged in'); renderRequestsList(); }
+  else alert('Wrong passcode')
+})
+
+function renderRequestsList(){
+  const listEl = document.getElementById('requestsList')
+  const requests = getRequests()
+  const pending = requests.filter(r=>r.status==='Pending').length
+  document.getElementById('pendingCount').innerText = pending + ' Pending'
+  listEl.innerHTML = ''
+  if(requests.length === 0){ listEl.innerHTML = '<div class="muted">कोई requests नहीं</div>'; return }
+  requests.forEach(req=>{
+    const div = document.createElement('div'); div.className='req'
+    const statusClass = req.status === 'Pending' ? 'status-pending' : (req.status==='Accepted' ? 'status-accepted' : 'status-declined')
+    div.innerHTML = `
+      <div style="display:flex;gap:8px;align-items:center">
+        <strong>${escapeHtml(req.name)}</strong>
+        <div class="tag ${statusClass}">${req.status}</div>
+        <div class="muted small">${new Date(req.created).toLocaleString()}</div>
+        <div class="right muted small">${escapeHtml(req.phone)}</div>
+      </div>
+      <div class="small" style="margin-top:8px">Pickup: ${escapeHtml(req.pickup)} — Drop: ${escapeHtml(req.drop)}</div>
+      <div class="small">Km: <span id="km_${req.id}">${req.kms}</span> | Fare: <span id="fare_${req.id}">${formatCurrency(req.fare)}</span></div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="acceptRequest('${req.id}')">Accept</button>
+        <button onclick="declineRequest('${req.id}')">Decline</button>
+        <button onclick="editRequest('${req.id}')">Edit Km/Fare</button>
+        <button onclick="callCustomer('${req.phone}')" class="controls">Call Customer</button>
+        <button onclick="waCustomer('${req.phone}','${encodeURIComponent('Hello '+req.name +', आपकी ride का status: '+req.status)}')" class="controls">WhatsApp Customer</button>
+      </div>
+    `
+    listEl.appendChild(div)
+  })
+}
+
+// Helper escape
+function escapeHtml(s){ if(!s) return ''; return String(s).replace(/[&<>\"']/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]}) }
+
+// Owner operations accessible in global scope
+window.acceptRequest = function(id){
+  const arr = getRequests()
+  const i = arr.findIndex(r=>r.id===id)
+  if(i===-1) return alert('Request not found')
+  arr[i].status = 'Accepted'
+  saveRequests(arr); renderRequestsList(); alert('Request accepted — Customer ko update milega (in-app)')
+}
+window.declineRequest = function(id){
+  const arr = getRequests()
+  const i = arr.findIndex(r=>r.id===id)
+  if(i===-1) return alert('Request not found')
+  arr[i].status = 'Declined'
+  saveRequests(arr); renderRequestsList(); alert('Request declined')
+}
+window.editRequest = function(id){
+  const arr = getRequests(); const i = arr.findIndex(r=>r.id===id)
+  if(i===-1) return alert('Request not found')
+  const newKm = prompt('नई Km दर्ज करें (decimal allowed)', arr[i].kms)
+  if(newKm === null) return
+  const kmNum = parseFloat(newKm)
+  if(isNaN(kmNum) || kmNum < 0) return alert('Invalid km')
+  arr[i].kms = kmNum
+  arr[i].fare = calculateFare(kmNum)
+  saveRequests(arr); renderRequestsList(); alert('Km और Fare updated')
+}
+window.callCustomer = function(ph){ window.location.href = 'tel:' + ph }
+window.waCustomer = function(ph, defaultText){ const clean = normalizePhoneForWhatsApp(ph); window.open('https://wa.me/' + clean + '?text=' + defaultText, '_blank') }
+
+// NAV
+document.getElementById('viewCustomer').addEventListener('click', ()=>{ showView('customer') })
+document.getElementById('viewOwner').addEventListener('click', ()=>{ showView('owner') })
+document.getElementById('viewSettings').addEventListener('click', ()=>{ showView('settings') })
+function showView(v){ document.getElementById('customerView').style.display = v==='customer' ? 'block' : 'none'; document.getElementById('ownerView').style.display = v==='owner' ? 'block' : 'none'; document.getElementById('settingsView').style.display = v==='settings' ? 'block' : 'none' }
+
+// Save settings button
+document.getElementById('saveSettings').addEventListener('click', saveSettings)
+
+// init
+loadSettings(); renderRequestsList();
+
+// Expose a small function to prefill customer fields for quick testing (dev)
+window._seedTest = function(){ document.getElementById('custName').value='Test User'; document.getElementById('custPhone').value='911234567890'; document.getElementById('pickup').value='Station'; document.getElementById('drop').value='Market'; document.getElementById('kms').value='5'; kmsInput.dispatchEvent(new Event('input')) }
+
+</script>
+</body>
+          </html>
+          
